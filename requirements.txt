@@ -1,0 +1,16 @@
+--index-url https://pypi.org/simple
+--extra-index-url https://download.pytorch.org/whl/cu124
+
+# Web Core
+fastapi
+uvicorn
+python-dotenv
+httpx
+pydantic
+groq
+python-multipart
+
+# Media processing & AI
+yt_dlp
+openai-whisper
+torch
