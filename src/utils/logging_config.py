@@ -12,7 +12,6 @@ class ColorFormatter(logging.Formatter):
     with ANSI escape sequences applied to improve readability in terminals.
     """
     
-    # ANSI Escape Sequences for Colors
     cyan = "\x1b[36m"
     blue = "\x1b[34;20m"
     yellow = "\x1b[33;20m"
@@ -72,11 +71,3 @@ def get_logger(name: str, level=logging.INFO):
     
     configure_logging(level)
     return logging.getLogger(name)
-
-if __name__ == "__main__":
-    logger = get_logger(__name__)
-    logger.debug("This is a debug message")
-    logger.info("This is an info message")
-    logger.warning("This is a warning message")
-    logger.error("This is an error message")
-    logger.critical("This is a critical message")
