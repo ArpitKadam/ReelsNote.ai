@@ -17,19 +17,15 @@ displays as real notation instead of raw source.
 """
 
 from __future__ import annotations
-
 import io
 import json
 import re
 from pathlib import Path
-
 import matplotlib
-
 matplotlib.use("Agg")  # headless: never try to open a window
 import matplotlib.pyplot as plt
 import markdown as md_lib
 import pymupdf
-
 from src.settings.settings import settings
 from src.utils.logging_config import get_logger
 from src.utils.paths import reel_folder
@@ -128,7 +124,7 @@ def _render_math_png(expr: str, block: bool) -> bytes | None:
         img.save(out, format="png")
         return out.getvalue()
     except Exception as e:  # unsupported LaTeX -> caller keeps raw text
-        logger.warning(f"⚠️ Could not render math '{expr[:40]}': {e}")
+        logger.warning(f"Could not render math '{expr[:40]}': {e}")
         return None
     finally:
         plt.close(fig)
@@ -283,7 +279,7 @@ def _load_manifest() -> list[dict]:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data.get("reels", []) if isinstance(data, dict) else []
     except Exception as e:
-        logger.warning(f"⚠️ Could not read manifest ({e}); starting fresh.")
+        logger.warning(f"Could not read manifest ({e}); starting fresh.")
         return []
 
 
@@ -345,7 +341,7 @@ def convert(state: dict) -> str | None:
     url = state.get("url") or ""
     question = state.get("question") or title  # fall back to title if absent
 
-    logger.info("📝 Rendering reel PDF (question page + report)...")
+    logger.info("Rendering reel PDF (question page + report)...")
     reel_pdf_bytes = _build_reel_pdf(question, title, url, report_md)
     reel_pdf_path = folder / settings.reel_pdf_name
     reel_pdf_path.write_bytes(reel_pdf_bytes)
@@ -366,7 +362,7 @@ def convert(state: dict) -> str | None:
     for entry in reels:
         p = Path(entry.get("reel_pdf", ""))
         if not p.exists():
-            logger.warning(f"⚠️ Missing reel PDF for '{entry.get('title')}'; skipping in notes.")
+            logger.warning(f"Missing reel PDF for '{entry.get('title')}'; skipping in notes.")
             continue
         page_counts.append(_pdf_page_count(p.read_bytes()))
         valid.append(entry)
@@ -399,5 +395,5 @@ def convert(state: dict) -> str | None:
     notes_path = settings.notes_pdf_path
     notes.save(str(notes_path))
     notes.close()
-    logger.info(f"✅ notes.pdf rebuilt with {len(valid)} reel(s) -> {notes_path}")
+    logger.info(f"notes.pdf rebuilt with {len(valid)} reel(s) -> {notes_path}")
     return str(notes_path)

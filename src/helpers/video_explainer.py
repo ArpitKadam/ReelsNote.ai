@@ -1,11 +1,34 @@
 from __future__ import annotations
 import base64
+import math
+import shutil
+import subprocess
 from pathlib import Path
 from openai import OpenAI, APIError
 from src.settings.settings import settings
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Shared, EXACT output contract reused by the single-shot and synthesis prompts
+# so both paths produce identically-formatted results.
+_OUTPUT_FORMAT = (
+    "Output format — follow EXACTLY:\n"
+    "1. The VERY FIRST line must be:\n"
+    "   QUESTION: <one clear, specific question that this video answers>\n"
+    "   Make it a natural question a learner would ask (e.g. "
+    "'How does the Gini impurity measure node purity in a decision tree?'). "
+    "One line only, no markdown, no quotes.\n"
+    "2. Then a line containing only three dashes: ---\n"
+    "3. Then the full educational explanation as valid Markdown:\n"
+    "   - No preamble, no sign-off, no conversational text.\n"
+    "   - Use `##`/`###` headings, bullet lists, numbered steps, `**bold**` for "
+    "key terms, and fenced code blocks for any code or commands.\n"
+    "   - Write any math as LaTeX between dollar signs, e.g. $Gini = 1 - \\sum "
+    "(p_k^2)$ inline or $$...$$ on its own line.\n"
+    "   - Structure it logically: a short overview, then the detailed teaching, "
+    "then key takeaways."
+)
 
 EDUCATIONAL_PROMPT = (
     "You are a world-class educator and subject-matter expert. You are given a "
@@ -24,21 +47,34 @@ EDUCATIONAL_PROMPT = (
     "genuinely useful — but do not invent facts the video does not support.\n"
     "- Ignore filler, intros, background music, branding, and social-media "
     "calls-to-action (like/follow/subscribe).\n\n"
-    "Output format — follow EXACTLY:\n"
-    "1. The VERY FIRST line must be:\n"
-    "   QUESTION: <one clear, specific question that this video answers>\n"
-    "   Make it a natural question a learner would ask (e.g. "
-    "'How does the Gini impurity measure node purity in a decision tree?'). "
-    "One line only, no markdown, no quotes.\n"
-    "2. Then a line containing only three dashes: ---\n"
-    "3. Then the full educational explanation as valid Markdown:\n"
-    "   - No preamble, no sign-off, no conversational text.\n"
-    "   - Use `##`/`###` headings, bullet lists, numbered steps, `**bold**` for "
-    "key terms, and fenced code blocks for any code or commands.\n"
-    "   - Write any math as LaTeX between dollar signs, e.g. $Gini = 1 - \\sum "
-    "(p_k^2)$ inline or $$...$$ on its own line.\n"
-    "   - Structure it logically: a short overview, then the detailed teaching, "
-    "then key takeaways."
+    + _OUTPUT_FORMAT
+)
+
+# Prompt for a SINGLE segment of a longer video. Output is raw study notes that
+# are later merged — no QUESTION line, no strict format here.
+_CHUNK_PROMPT_TEMPLATE = (
+    "You are given ONE segment (segment {index} of {total}) of a longer "
+    "educational social-media video. Extract every concept, definition, step, "
+    "formula, and technique TAUGHT in THIS segment as detailed study notes. "
+    "Teach the underlying knowledge — do not narrate what appears on screen. "
+    "Ignore intros, branding, background music, and social-media "
+    "calls-to-action.\n\n"
+    "Output plain, detailed notes for this segment only. No preamble, no "
+    "QUESTION line, no sign-off. It is fine if the segment starts or ends "
+    "mid-topic; just capture what is taught."
+)
+
+# Prompt that merges per-segment notes into one coherent final explanation.
+_SYNTHESIS_PROMPT_HEADER = (
+    "You are a world-class educator. Below are study notes extracted from "
+    "consecutive segments of a SINGLE short educational video, in order. Some "
+    "topics may span segment boundaries or repeat. Merge them into ONE "
+    "coherent, self-contained educational explanation that someone could learn "
+    "from without ever watching the video. Deduplicate, order logically, "
+    "define every term, and explain the 'why' and 'how' — but do not invent "
+    "facts the notes do not support.\n\n"
+    + _OUTPUT_FORMAT
+    + "\n\nSEGMENT NOTES:\n"
 )
 
 
@@ -68,18 +104,132 @@ def _encode_video_to_base64(video_path: Path) -> str:
     if not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
-    size_mb = video_path.stat().st_size / (1024 * 1024)
-    if size_mb > 20:
-        logger.warning(
-            f"⚠️ Video is {size_mb:.1f}MB; base64 grows it to ~{size_mb * 1.33:.1f}MB, "
-            "which may exceed NVIDIA API payload limits."
-        )
     with open(video_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
 def _client() -> OpenAI:
     return OpenAI(base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key)
+
+
+def _call_nvidia(content: list | str, max_tokens: int = 8192) -> str | None:
+    """Single NVIDIA NIM chat call. Returns the message text, or None on error."""
+
+    try:
+        response = _client().chat.completions.create(
+            model=settings.nvidia_model,
+            messages=[{"role": "user", "content": content}],
+            temperature=0.2,
+            max_tokens=max_tokens,
+        )
+    except APIError as e:
+        logger.error(f"NVIDIA API error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error during NVIDIA call: {e}")
+        return None
+
+    return response.choices[0].message.content
+
+
+def _explain_video_file(video_path: Path, prompt: str) -> str | None:
+    """Send one video file inline (base64) with `prompt`; return the raw reply."""
+
+    b64 = _encode_video_to_base64(video_path)
+    content = [
+        {"type": "text", "text": prompt},
+        {
+            "type": "video_url",
+            "video_url": {"url": f"data:video/mp4;base64,{b64}"},
+        },
+    ]
+    return _call_nvidia(content)
+
+
+def _video_duration_seconds(video_path: Path) -> float:
+    result = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "csv=p=0",
+            str(video_path),
+        ],
+        capture_output=True, text=True,
+    )
+    try:
+        return float(result.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
+def _split_video(video_path: Path, chunk_dir: Path) -> list[Path]:
+    """Split `video_path` into time-based segments each ~`nvidia_chunk_mb`.
+
+    Uses stream-copy (`-c copy`), so cuts land on keyframes and segment sizes
+    are approximate. Returns the ordered list of produced chunk files.
+    """
+
+    size_mb = video_path.stat().st_size / (1024 * 1024)
+    num_chunks = max(2, math.ceil(size_mb / settings.nvidia_chunk_mb))
+
+    duration = _video_duration_seconds(video_path)
+    if duration <= 0:
+        raise RuntimeError("Could not read video duration; cannot split for chunking.")
+
+    segment_time = duration / num_chunks
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    pattern = str(chunk_dir / "chunk_%03d.mp4")
+
+    subprocess.run(
+        [
+            "ffmpeg", "-v", "error", "-y",
+            "-i", str(video_path),
+            "-c", "copy", "-map", "0",
+            "-f", "segment",
+            "-segment_time", f"{segment_time:.3f}",
+            "-reset_timestamps", "1",
+            pattern,
+        ],
+        check=True, capture_output=True,
+    )
+
+    return sorted(chunk_dir.glob("chunk_*.mp4"))
+
+
+def _describe_chunked(video_path: Path) -> str | None:
+    """Split an oversized video, explain each segment, synthesize one reply.
+
+    Returns the final raw model output (QUESTION + --- + Markdown), or None.
+    """
+
+    chunk_dir = video_path.parent / "chunks"
+    try:
+        chunks = _split_video(video_path, chunk_dir)
+        if not chunks:
+            logger.error("Video splitting produced no chunks.")
+            return None
+
+        logger.info(f"🔪 Split video into {len(chunks)} segments for analysis.")
+
+        notes: list[str] = []
+        for i, chunk in enumerate(chunks, start=1):
+            logger.info(f"Analyzing segment {i}/{len(chunks)}...")
+            prompt = _CHUNK_PROMPT_TEMPLATE.format(index=i, total=len(chunks))
+            reply = _explain_video_file(chunk, prompt)
+            if reply and reply.strip():
+                notes.append(f"### Segment {i}\n{reply.strip()}")
+            else:
+                logger.warning(f"Segment {i} returned no content; skipping.")
+
+        if not notes:
+            logger.error("All segments failed; no notes to synthesize.")
+            return None
+
+        logger.info("Synthesizing final explanation from segment notes...")
+        synthesis_input = _SYNTHESIS_PROMPT_HEADER + "\n\n".join(notes)
+        return _call_nvidia(synthesis_input)
+    finally:
+        shutil.rmtree(chunk_dir, ignore_errors=True)
 
 
 def describe(state: dict) -> tuple[str | None, str | None]:
@@ -89,6 +239,10 @@ def describe(state: dict) -> tuple[str | None, str | None]:
     `question.txt` next to the video. `explanation` is the Markdown string and
     `question` is the single question the reel answers (used as the reel's
     title/index entry). Either may be None on failure.
+
+    Videos larger than `nvidia_max_video_mb` are split into segments, explained
+    individually, and merged — inline base64 of the whole file would otherwise
+    exceed NVIDIA API payload limits and fail with a connection error.
     """
 
     video_path_str = state.get("video_path")
@@ -101,7 +255,7 @@ def describe(state: dict) -> tuple[str | None, str | None]:
     question_path = video_path.parent / settings.question_name
 
     if explanation_path.exists():
-        logger.info("📦 video_explanation.md exists. Returning stored explanation.")
+        logger.info("video_explanation.md exists. Returning stored explanation.")
         explanation = explanation_path.read_text(encoding="utf-8")
         question = (
             question_path.read_text(encoding="utf-8").strip()
@@ -110,47 +264,30 @@ def describe(state: dict) -> tuple[str | None, str | None]:
         )
         return explanation, question
 
-    try:
-        b64 = _encode_video_to_base64(video_path)
-    except FileNotFoundError as e:
-        logger.error(str(e))
+    if not video_path.exists():
+        logger.error(f"Video file not found: {video_path}")
         return None, None
 
-    logger.info("🚀 Sending video to NVIDIA NIM for educational analysis...")
-    try:
-        response = _client().chat.completions.create(
-            model=settings.nvidia_model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": EDUCATIONAL_PROMPT},
-                        {
-                            "type": "video_url",
-                            "video_url": {"url": f"data:video/mp4;base64,{b64}"},
-                        },
-                    ],
-                }
-            ],
-            temperature=0.2,
-            max_tokens=8192,
+    size_mb = video_path.stat().st_size / (1024 * 1024)
+
+    if size_mb > settings.nvidia_max_video_mb:
+        logger.warning(
+            f"Video is {size_mb:.1f}MB (base64 ~{size_mb * 1.33:.1f}MB), over the "
+            f"{settings.nvidia_max_video_mb:.0f}MB inline limit; splitting into segments."
         )
-    except APIError as e:
-        logger.error(f"NVIDIA API error: {e}")
-        return None, None
-    except Exception as e:
-        logger.error(f"Unexpected error during video description: {e}")
-        return None, None
+        raw = _describe_chunked(video_path)
+    else:
+        logger.info("Sending video to NVIDIA NIM for educational analysis...")
+        raw = _explain_video_file(video_path, EDUCATIONAL_PROMPT)
 
-    raw = response.choices[0].message.content
     if not raw:
         return None, None
 
     explanation, question = _split_question(raw)
     if explanation:
         explanation_path.write_text(explanation, encoding="utf-8")
-        logger.info(f"✅ Explanation saved to {explanation_path.name}")
+        logger.info(f"Explanation saved to {explanation_path.name}")
     if question:
         question_path.write_text(question, encoding="utf-8")
-        logger.info(f"❓ Question saved: {question}")
+        logger.info(f"Question saved: {question}")
     return explanation, question

@@ -50,16 +50,16 @@ class Scraper:
 
             if torch.cuda.is_available():
                 try:
-                    logger.info("🚀 NVIDIA GPU detected. Initializing CUDA acceleration...")
+                    logger.info("NVIDIA GPU detected. Initializing CUDA acceleration...")
                     self._whisper_model = whisper.load_model(self.whisper_model_name, device="cuda")
                     self.device_used = "cuda"
-                    logger.info("✅ Whisper loaded onto GPU.")
+                    logger.info("Whisper loaded onto GPU.")
                 except Exception as gpu_err:
-                    logger.warning(f"⚠️ GPU init failed ({gpu_err}). Falling back to CPU...")
+                    logger.warning(f"GPU init failed ({gpu_err}). Falling back to CPU...")
                     self._whisper_model = whisper.load_model(self.whisper_model_name, device="cpu")
                     self.device_used = "cpu"
             else:
-                logger.info("ℹ️ CUDA unavailable. Running Whisper on CPU...")
+                logger.info("CUDA unavailable. Running Whisper on CPU...")
                 self._whisper_model = whisper.load_model(self.whisper_model_name, device="cpu")
                 self.device_used = "cpu"
 
@@ -69,8 +69,22 @@ class Scraper:
     def _transcribe(self, media_path: Path) -> str:
         model = self._load_whisper()
         use_fp16 = self.device_used == "cuda"
-        logger.info(f"🎙️ Transcribing [{media_path.name}] on [{self.device_used.upper()}]...")
-        result = model.transcribe(str(media_path), fp16=use_fp16, verbose=True)
+        lang = (settings.whisper_language or "").strip().lower()
+        language = None if lang in ("", "auto") else lang
+        logger.info(
+            f"🎙️ Transcribing [{media_path.name}] on [{self.device_used.upper()}] "
+            f"(language={language or 'auto-detect'})..."
+        )
+        result = model.transcribe(
+            str(media_path),
+            fp16=use_fp16,
+            verbose=True,
+            language=language,
+            # Reduce runaway hallucination loops on music / silent stretches.
+            condition_on_previous_text=False,
+            no_speech_threshold=0.6,
+            compression_ratio_threshold=2.4,
+        )
         return result["text"].strip()
     
 
@@ -81,10 +95,10 @@ class Scraper:
             try:
                 return self._transcribe(video_path)
             except Exception as e:
-                logger.error(f"❌ Video transcription failed: {e}")
+                logger.error(f"Video transcription failed: {e}")
                 return None
 
-        logger.info("🔇 No audio in video. Trying audio-only fallback...")
+        logger.info("No audio in video. Trying audio-only fallback...")
         audio_tmpl = str(folder / "audio_only.%(ext)s")
         audio_opts = {
             "outtmpl": audio_tmpl,
@@ -97,12 +111,12 @@ class Scraper:
                 ydl.download([url])
             audio_files = list(folder.glob("audio_only.*"))
             if not audio_files:
-                logger.info("🔇 Silent reel — no audio track available.")
+                logger.info("Silent reel — no audio track available.")
                 return None
             transcript = self._transcribe(audio_files[0])
             return transcript
         except Exception as e:
-            logger.error(f"❌ Audio fallback failed: {e}")
+            logger.error(f"Audio fallback failed: {e}")
             return None
         finally:
             for tmp in folder.glob("audio_only.*"):
@@ -112,7 +126,7 @@ class Scraper:
     def scrape(self, url: str) -> dict:
         """Return the reel schema dict, downloading/transcribing only if needed."""
 
-        logger.info(f"🔎 Resolving reel info: {url}")
+        logger.info(f"Resolving reel info: {url}")
         with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
             info = ydl.extract_info(url, download=False)
 
@@ -122,12 +136,12 @@ class Scraper:
         info_path = folder / settings.info_name
 
         if info_path.exists():
-            logger.info(f"📦 Folder already exists ({folder.name}). Returning stored result.")
+            logger.info(f"Folder already exists ({folder.name}). Returning stored result.")
             with open(info_path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
         folder.mkdir(parents=True, exist_ok=True)
-        logger.info(f"📥 Downloading media into {folder}...")
+        logger.info(f"Downloading media into {folder}...")
         ydl_opts = {
             "outtmpl": str(folder / "video.%(ext)s"),
             "format": "bestvideo+bestaudio/best",
@@ -166,5 +180,5 @@ class Scraper:
         with open(info_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
-        logger.info("✅ Reel scrape complete.")
+        logger.info("Reel scrape complete.")
         return result

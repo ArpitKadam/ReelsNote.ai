@@ -98,7 +98,7 @@ def generate(state: dict) -> str | None:
     report_path = folder / settings.report_name
 
     if report_path.exists():
-        logger.info("📦 report.md exists. Returning stored report.")
+        logger.info("report.md exists. Returning stored report.")
         return report_path.read_text(encoding="utf-8")
 
     prompt = REPORT_TEMPLATE.format(
@@ -109,7 +109,7 @@ def generate(state: dict) -> str | None:
         video_explanation=state.get("video_explanation") or _MISSING,
     )
 
-    logger.info("🧠 Generating report with Groq...")
+    logger.info("Generating report with Groq...")
     try:
         response = _client().chat.completions.create(
             model=settings.groq_report_model,
@@ -128,5 +128,5 @@ def generate(state: dict) -> str | None:
     if report:
         folder.mkdir(parents=True, exist_ok=True)
         report_path.write_text(report, encoding="utf-8")
-        logger.info(f"✅ Report saved to {report_path.name}")
+        logger.info(f"Report saved to {report_path.name}")
     return report
