@@ -8,9 +8,6 @@ from src.utils.logging_config import get_logger
 
 logger = get_logger("ReelsNote.ai")
 
-DEFAULT_URL = "https://www.instagram.com/reel/DasfzZBxRTg/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA=="
-
-
 def run(url: str) -> dict:
     graph = build_graph()
     if not Path("pipeline.png").exists():
@@ -35,5 +32,5 @@ def run(url: str) -> dict:
     return final_state
 
 if __name__ == "__main__":
-    url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL
+    url = sys.argv[1] if len(sys.argv) > 1 else None
     run(url)
