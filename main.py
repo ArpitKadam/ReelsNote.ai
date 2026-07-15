@@ -23,11 +23,13 @@ def run(url: str) -> dict:
         {
             "url": final_state.get("url"),
             "title": final_state.get("title"),
+            "question": final_state.get("question"),
             "has_audio": final_state.get("has_audio"),
             "video_path": final_state.get("video_path"),
             "transcript_chars": len(final_state.get("transcript") or ""),
             "video_explanation_chars": len(final_state.get("video_explanation") or ""),
             "report_chars": len(final_state.get("report") or ""),
+            "notes_pdf_path": final_state.get("notes_pdf_path"),
         }
     )
     return final_state

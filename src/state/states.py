@@ -11,4 +11,6 @@ class FinalState(TypedDict, total=False):
     has_audio: bool
     transcript: Optional[str]
     video_explanation: Optional[str]
+    question: Optional[str]
     report: Optional[str]
+    notes_pdf_path: Optional[str]

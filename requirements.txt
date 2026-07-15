@@ -15,3 +15,8 @@ openai
 openai-whisper
 torch
 rich
+
+# PDF notes generation
+pymupdf
+matplotlib
+markdown

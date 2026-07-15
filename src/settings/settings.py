@@ -18,6 +18,11 @@ class Settings:
     video_name: str = "video.mp4"
     explanation_name: str = "video_explanation.md"
     report_name: str = "report.md"
+    question_name: str = "question.txt"
+    reel_pdf_name: str = "reel.pdf"
+
+    notes_pdf_path: Path = Path("notes.pdf")
+    manifest_name: str = "notes_manifest.json"
 
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
     groq_report_model: str = os.getenv("GROQ_LLM_MODEL", "openai/gpt-oss-120b")

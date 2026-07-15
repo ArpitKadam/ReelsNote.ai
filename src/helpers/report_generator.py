@@ -50,8 +50,12 @@ definition.
 
 ## 3. Detailed Explanation
 The heart of the report. Explain every important concept in depth, in a logical
-order. Use `###` subheadings per topic. Explain the 'why' and 'how'. Include
-formulas, code, or commands in fenced blocks where relevant.
+order. Use `###` subheadings per topic. Explain the 'why' and 'how'.
+Write ALL mathematical formulas as LaTeX between dollar signs — inline as
+`$Gini = 1 - \\sum (p_k^2)$` and displayed equations on their own line as
+`$$Gini = 1 - \\sum (p_k^2)$$`. NEVER put math inside ``` code fences or
+backticks. Reserve fenced code blocks strictly for real source code, shell
+commands, or config — never for equations.
 
 ## 4. Step-by-Step (if applicable)
 If the reel demonstrates a process, give a clear numbered procedure the reader
