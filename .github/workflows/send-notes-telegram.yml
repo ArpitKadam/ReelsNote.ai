@@ -1,0 +1,48 @@
+name: Send notes.pdf to Telegram
+
+on:
+  push:
+    paths:
+      - "notes.pdf"
+  workflow_dispatch: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Send notes.pdf via Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+
+          if [ ! -f notes.pdf ]; then
+            echo "::error::notes.pdf not found in repo root — nothing to send."
+            exit 1
+          fi
+
+          # Short commit info for the caption.
+          SHA_SHORT="${GITHUB_SHA:0:7}"
+          MSG="$(git log -1 --pretty=%s)"
+          CAPTION="📒 notes.pdf updated
+          repo: ${GITHUB_REPOSITORY}
+          commit: ${SHA_SHORT} — ${MSG}"
+
+          HTTP_CODE=$(curl -sS -o /tmp/tg_resp.json -w "%{http_code}" \
+            -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F "chat_id=${CHAT_ID}" \
+            -F "document=@notes.pdf;type=application/pdf" \
+            -F "caption=${CAPTION}")
+
+          echo "Telegram HTTP status: ${HTTP_CODE}"
+          cat /tmp/tg_resp.json
+
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::error::Telegram sendDocument failed (HTTP ${HTTP_CODE})."
+            exit 1
+          fi
+          echo "✅ Sent notes.pdf to Telegram."
