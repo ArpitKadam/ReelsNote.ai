@@ -6,13 +6,11 @@
 
 <br/>
 
-<video src="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4" poster="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.jpg" controls muted width="840">
-  <a href="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4">
-    <img src="brag.jpg" alt="ReelsNote.ai — Reels in. Rigor out." width="840"/>
-  </a>
-</video>
+<a href="https://github.com/ArpitKadam/ReelsNote.ai/raw/main/brag.mp4">
+  <img src="brag.jpg" alt="ReelsNote.ai — Reels in. Rigor out. (click to play the launch clip)" width="840"/>
+</a>
 
-<sub>▶️ Video not playing? <a href="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4">Click here to watch the launch clip.</a></sub>
+<sub>▶️ <a href="https://github.com/ArpitKadam/ReelsNote.ai/raw/main/brag.mp4">Click the image to watch the 20-second launch clip.</a></sub>
 
 <em>Paste one reel URL, get back a rigorous, LaTeX-typeset study PDF. Four LangGraph agents turn a 60-second doomscroll into a paper. <strong>Reels in. Rigor out.</strong></em>
 
