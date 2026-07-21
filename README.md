@@ -6,9 +6,9 @@
 
 <br/>
 
-<a href="https://github.com/ArpitKadam/ReelsNote.ai/raw/main/brag.mp4">
-  <img src="brag.jpg" alt="ReelsNote.ai — Reels in. Rigor out. (click to play the launch clip)" width="840"/>
-</a>
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/d1c39a00-0626-4e7d-be49-35d1fdbffc42" width="90%" controls autoplay loop muted></video>
+</p>
 
 <sub>▶️ <a href="https://github.com/ArpitKadam/ReelsNote.ai/raw/main/brag.mp4">Click the image to watch the 20-second launch clip.</a></sub>
 
