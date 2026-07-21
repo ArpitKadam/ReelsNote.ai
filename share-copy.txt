@@ -1,0 +1,1 @@
+ReelsNote.ai — paste one reel URL, get back a rigorous, LaTeX-typeset study PDF. Four LangGraph agents turn a 60-second doomscroll into a paper. Reels in. Rigor out.

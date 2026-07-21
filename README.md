@@ -6,6 +6,18 @@
 
 <br/>
 
+<video src="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4" poster="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.jpg" controls muted width="840">
+  <a href="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4">
+    <img src="brag.jpg" alt="ReelsNote.ai — Reels in. Rigor out." width="840"/>
+  </a>
+</video>
+
+<sub>▶️ Video not playing? <a href="https://raw.githubusercontent.com/ArpitKadam/ReelsNote.ai/main/brag.mp4">Click here to watch the launch clip.</a></sub>
+
+<em>Paste one reel URL, get back a rigorous, LaTeX-typeset study PDF. Four LangGraph agents turn a 60-second doomscroll into a paper. <strong>Reels in. Rigor out.</strong></em>
+
+<br/>
+
 [![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-CUDA%2012.4-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
@@ -50,11 +62,11 @@ ReelsNote.ai converts that stream into a durable learning resource. Its design g
 The system is a compiled `StateGraph` (LangGraph) whose shared state (`FinalState`, a `TypedDict`) flows through four nodes in sequence. Each node reads the state, performs one responsibility, and returns a partial update.
 
 ```
-        ┌─────────┐     ┌──────────┐     ┌──────────┐     ┌────────┐
-URL ──▶ │ scrape  │ ──▶ │ explain  │ ──▶ │  report  │ ──▶ │  pdf   │ ──▶ notes.pdf
-        └─────────┘     └──────────┘     └──────────┘     └────────┘
-         yt-dlp +        NVIDIA NIM        Groq LLM         PyMuPDF +
-         Whisper         video VLM         synthesis        matplotlib
+         ┌─────────┐      ┌──────────┐      ┌──────────┐     ┌────────┐
+URL ──▶ │ scrape  │ ──▶  │ explain  │ ──▶ │  report  │ ──▶ │  pdf   │ ──▶ notes.pdf
+         └─────────┘      └──────────┘      └──────────┘     └────────┘
+         yt-dlp +          NVIDIA NIM         Groq LLM        PyMuPDF +
+         Whisper           video VLM          synthesis       matplotlib
 ```
 
 > A live Mermaid render of the compiled graph is written to `pipeline.png` on first run.
