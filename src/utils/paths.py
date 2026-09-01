@@ -23,7 +23,15 @@ def sanitize_title(title: str, fallback: str = "reel") -> str:
     return cleaned or fallback
 
 
-def reel_folder(title: str, fallback: str = "reel") -> Path:
-    """Absolute-ish folder for a reel's artifacts: output/{safe_title}/."""
-    
-    return settings.output_dir / sanitize_title(title, fallback)
+def reel_folder(title: str, reel_id: str = "", fallback: str = "reel") -> Path:
+    """Folder for a reel's artifacts: output/{safe_title} [{reel_id}]/.
+
+    The id suffix keeps folders unique — many reels share a generic title
+    like "Video by <creator>", which would otherwise collide and serve one
+    reel's cache for another.
+    """
+
+    name = sanitize_title(title, fallback)
+    if reel_id and reel_id not in name:
+        name = f"{name} [{reel_id}]"
+    return settings.output_dir / name

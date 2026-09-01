@@ -10,6 +10,15 @@ from src.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+def _cookie_opts() -> dict:
+    """Instagram increasingly rejects anonymous requests; pass login cookies."""
+    if settings.ig_cookies_file:
+        return {"cookiefile": settings.ig_cookies_file}
+    if settings.ig_cookies_browser:
+        return {"cookiesfrombrowser": (settings.ig_cookies_browser,)}
+    return {}
+
+
 class Scraper:
     def __init__(self, whisper_model: str | None = None):
         self.whisper_model_name = whisper_model or settings.whisper_model
@@ -105,6 +114,7 @@ class Scraper:
             "format": "bestaudio/best",
             "quiet": True,
             "noplaylist": True,
+            **_cookie_opts(),
         }
         try:
             with yt_dlp.YoutubeDL(audio_opts) as ydl:
@@ -127,12 +137,12 @@ class Scraper:
         """Return the reel schema dict, downloading/transcribing only if needed."""
 
         logger.info(f"Resolving reel info: {url}")
-        with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
+        with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, **_cookie_opts()}) as ydl:
             info = ydl.extract_info(url, download=False)
 
         reel_id = info.get("id") or "reel"
         title = info.get("title") or reel_id
-        folder = reel_folder(title, fallback=reel_id)
+        folder = reel_folder(title, reel_id=reel_id, fallback=reel_id)
         info_path = folder / settings.info_name
 
         if info_path.exists():
@@ -149,6 +159,7 @@ class Scraper:
             "writeinfojson": False,
             "quiet": False,
             "noplaylist": True,
+            **_cookie_opts(),
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
