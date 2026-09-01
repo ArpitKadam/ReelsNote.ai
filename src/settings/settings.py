@@ -28,11 +28,14 @@ class Settings:
     notes_pdf_path: Path = Path("notes.pdf")
     manifest_name: str = "notes_manifest.json"
 
-    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    groq_report_model: str = os.getenv("GROQ_LLM_MODEL", "openai/gpt-oss-120b")
+    # Instagram auth for yt-dlp: path to Netscape cookies.txt, or browser name
+    # ("firefox", "edge", "chrome") to read cookies directly from it.
+    ig_cookies_file: str = os.getenv("IG_COOKIES_FILE", "")
+    ig_cookies_browser: str = os.getenv("IG_COOKIES_BROWSER", "")
 
     nvidia_api_key: str = os.getenv("NVIDIA_API_KEY", "")
     nvidia_model: str = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+    nvidia_report_model: str = os.getenv("NVIDIA_REPORT_MODEL", "nvidia/nemotron-3-ultra-550b-a55b")
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
     # Videos larger than this (raw MB) are split into segments before sending,

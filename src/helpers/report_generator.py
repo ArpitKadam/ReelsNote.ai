@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from groq import Groq
+from openai import OpenAI
 from src.settings.settings import settings
 from src.utils.logging_config import get_logger
 
@@ -77,8 +77,8 @@ Rules:
 _MISSING = "(not available)"
 
 
-def _client() -> Groq:
-    return Groq(api_key=settings.groq_api_key)
+def _client() -> OpenAI:
+    return OpenAI(base_url=settings.nvidia_base_url, api_key=settings.nvidia_api_key)
 
 
 def generate(state: dict) -> str | None:
@@ -109,10 +109,10 @@ def generate(state: dict) -> str | None:
         video_explanation=state.get("video_explanation") or _MISSING,
     )
 
-    logger.info("Generating report with Groq...")
+    logger.info("Generating report with NVIDIA NIM...")
     try:
         response = _client().chat.completions.create(
-            model=settings.groq_report_model,
+            model=settings.nvidia_report_model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
@@ -121,7 +121,7 @@ def generate(state: dict) -> str | None:
             max_tokens=8192,
         )
     except Exception as e:
-        logger.error(f"Groq API error during report generation: {e}")
+        logger.error(f"NVIDIA API error during report generation: {e}")
         return None
 
     report = response.choices[0].message.content

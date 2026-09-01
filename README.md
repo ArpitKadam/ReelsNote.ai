@@ -22,7 +22,6 @@
 [![OpenAI Whisper](https://img.shields.io/badge/Whisper-ASR-412991?style=for-the-badge&logo=openai&logoColor=white)](https://github.com/openai/whisper)
 
 [![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-Video_VLM-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
-[![Groq](https://img.shields.io/badge/Groq-LLM_Synthesis-F55036?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-Ingestion-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-Media-007808?style=for-the-badge&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 
@@ -63,7 +62,7 @@ The system is a compiled `StateGraph` (LangGraph) whose shared state (`FinalStat
          ┌─────────┐      ┌──────────┐      ┌──────────┐     ┌────────┐
 URL ──▶ │ scrape  │ ──▶  │ explain  │ ──▶ │  report  │ ──▶ │  pdf   │ ──▶ notes.pdf
          └─────────┘      └──────────┘      └──────────┘     └────────┘
-         yt-dlp +          NVIDIA NIM         Groq LLM        PyMuPDF +
+         yt-dlp +          NVIDIA NIM         NVIDIA NIM      PyMuPDF +
          Whisper           video VLM          synthesis       matplotlib
 ```
 
@@ -105,7 +104,7 @@ Implemented in `src/helpers/video_explainer.py`, backed by an **NVIDIA NIM** vid
 
 ### 3.3 Report Synthesis — `report`
 
-Implemented in `src/helpers/report_generator.py`, backed by **Groq** (`openai/gpt-oss-120b`).
+Implemented in `src/helpers/report_generator.py`, backed by **NVIDIA NIM** (`nvidia/nemotron-3-ultra-550b-a55b`).
 
 Three sources — caption, transcript, and visual explanation — are fused by an expert-technical-writer prompt into a single deep report following a fixed six-section template: *Overview → Key Concepts → Detailed Explanation → Step-by-Step → Practical Takeaways → Further Notes*. Overlapping information is reconciled rather than repeated, and all mathematics is emitted as `$...$` / `$$...$$` LaTeX (never inside code fences).
 
@@ -131,7 +130,7 @@ ReelsNote-ai/
 │   ├── helpers/
 │   │   ├── reel_scrapper.py      # yt-dlp + ffmpeg + Whisper
 │   │   ├── video_explainer.py    # NVIDIA NIM video VLM (+ chunking)
-│   │   ├── report_generator.py   # Groq report synthesis
+│   │   ├── report_generator.py   # NVIDIA NIM report synthesis
 │   │   └── pdf_converter.py      # PyMuPDF + matplotlib PDF/index builder
 │   └── utils/
 │       ├── paths.py              # Title sanitization → safe folder names
@@ -152,7 +151,7 @@ ReelsNote-ai/
 
 - **Python ≥ 3.13**
 - **FFmpeg** (with `ffprobe`) on `PATH`
-- **API keys:** a Groq API key and an NVIDIA NIM (build.nvidia.com) API key
+- **API keys:** an NVIDIA NIM (build.nvidia.com) API key
 - *(Optional)* an NVIDIA GPU with CUDA 12.4 for accelerated Whisper
 
 ### 5.2 Setup
@@ -170,12 +169,11 @@ pip install -r requirements.txt
 Create a `.env` in the project root:
 
 ```env
-GROQ_API_KEY=your_groq_key
 NVIDIA_API_KEY=your_nvidia_key
 
 # Optional overrides
-GROQ_LLM_MODEL=openai/gpt-oss-120b
 NVIDIA_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+NVIDIA_REPORT_MODEL=nvidia/nemotron-3-ultra-550b-a55b
 WHISPER_LANGUAGE=en
 NVIDIA_MAX_VIDEO_MB=20
 NVIDIA_CHUNK_MB=12
@@ -195,10 +193,9 @@ The pipeline logs each node, prints a final-state summary, and writes/updates `n
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GROQ_API_KEY` | — | Groq authentication (report synthesis) |
-| `NVIDIA_API_KEY` | — | NVIDIA NIM authentication (video analysis) |
-| `GROQ_LLM_MODEL` | `openai/gpt-oss-120b` | Report-generation model |
+| `NVIDIA_API_KEY` | — | NVIDIA NIM authentication (video analysis + report synthesis) |
 | `NVIDIA_MODEL` | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | Video-language model |
+| `NVIDIA_REPORT_MODEL` | `nvidia/nemotron-3-ultra-550b-a55b` | Report-generation model |
 | `WHISPER_LANGUAGE` | `en` | Forced ASR language (`auto`/`""` to auto-detect) |
 | `NVIDIA_MAX_VIDEO_MB` | `20` | Inline-payload ceiling before chunking kicks in |
 | `NVIDIA_CHUNK_MB` | `12` | Approximate size per split segment |
@@ -241,7 +238,7 @@ The output `notes.pdf` is a single, growing, indexed notebook:
 
 ## 10. Acknowledgements
 
-Built on the shoulders of [LangGraph](https://langchain-ai.github.io/langgraph/), [OpenAI Whisper](https://github.com/openai/whisper), [NVIDIA NIM](https://build.nvidia.com/), [Groq](https://groq.com/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), and [PyMuPDF](https://pymupdf.readthedocs.io/).
+Built on the shoulders of [LangGraph](https://langchain-ai.github.io/langgraph/), [OpenAI Whisper](https://github.com/openai/whisper), [NVIDIA NIM](https://build.nvidia.com/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), and [PyMuPDF](https://pymupdf.readthedocs.io/).
 
 <div align="center">
 <br/>

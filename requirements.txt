@@ -7,7 +7,6 @@ uvicorn
 python-dotenv
 httpx
 pydantic
-groq
 python-multipart
 langgraph
 yt_dlp
