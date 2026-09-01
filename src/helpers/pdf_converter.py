@@ -88,11 +88,32 @@ _FENCE_RE = re.compile(r"(```.*?```|~~~.*?~~~|`[^`\n]+`)", re.DOTALL)
 _BLOCK_MATH_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
 _INLINE_MATH_RE = re.compile(r"(?<!\\)\$(.+?)(?<!\\)\$", re.DOTALL)
 
+# Standard LaTeX commands matplotlib's mathtext doesn't know, mapped to
+# equivalents it does. LLMs emit these freely (e.g. \le instead of \leq).
+_MATHTEXT_ALIASES = {
+    r"\le": r"\leq",
+    r"\ge": r"\geq",
+    r"\implies": r"\Rightarrow",
+    r"\iff": r"\Leftrightarrow",
+    r"\land": r"\wedge",
+    r"\lor": r"\vee",
+    r"\lnot": r"\neg",
+    r"\argmax": r"\mathrm{argmax}",
+    r"\argmin": r"\mathrm{argmin}",
+    r"\coloneqq": r":=",
+}
+# (?![a-zA-Z]) keeps \le from eating the prefix of \left, \leq, etc.
+_ALIAS_RE = re.compile(
+    "(?:"
+    + "|".join(re.escape(k) for k in sorted(_MATHTEXT_ALIASES, key=len, reverse=True))
+    + r")(?![a-zA-Z])"
+)
+
 
 def _render_math_png(expr: str, block: bool) -> bytes | None:
     """Render a single LaTeX expression to transparent PNG bytes, or None."""
 
-    expr = expr.strip()
+    expr = _ALIAS_RE.sub(lambda m: _MATHTEXT_ALIASES[m.group(0)], expr.strip())
     if not expr:
         return None
     fontsize = 20 if block else 15
