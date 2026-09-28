@@ -86,7 +86,10 @@ h1 { font-size: 26px; color: #0b3d91; margin: 0 0 4px 0; }
 
 _FENCE_RE = re.compile(r"(```.*?```|~~~.*?~~~|`[^`\n]+`)", re.DOTALL)
 _BLOCK_MATH_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
-_INLINE_MATH_RE = re.compile(r"(?<!\\)\$(.+?)(?<!\\)\$", re.DOTALL)
+# Inline math: single line, no `$` inside, and never half of a `$$` pair —
+# otherwise a failed $$block$$ (restored as raw text) gets re-matched across
+# newlines and produces a second bogus parse error.
+_INLINE_MATH_RE = re.compile(r"(?<![\\$])\$(?!\$)([^$\n]+?)\$(?!\$)")
 
 # Standard LaTeX commands matplotlib's mathtext doesn't know, mapped to
 # equivalents it does. LLMs emit these freely (e.g. \le instead of \leq).
@@ -101,6 +104,10 @@ _MATHTEXT_ALIASES = {
     r"\argmax": r"\mathrm{argmax}",
     r"\argmin": r"\mathrm{argmin}",
     r"\coloneqq": r":=",
+    # No mathtext equivalent for the brace decorations: drop the command so
+    # \underbrace{X}_{Y} degrades to {X}_{Y} (label becomes a plain script).
+    r"\underbrace": "",
+    r"\overbrace": "",
 }
 # (?![a-zA-Z]) keeps \le from eating the prefix of \left, \leq, etc.
 _ALIAS_RE = re.compile(
