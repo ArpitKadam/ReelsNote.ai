@@ -109,6 +109,12 @@ _MATHTEXT_ALIASES = {
     r"\underbrace": "",
     r"\overbrace": "",
 }
+# Delimiter sizing (\big( ... \Bigr]) doesn't exist in mathtext: drop the
+# command, keep the delimiter. The (?![a-zA-Z]) lookahead in _ALIAS_RE
+# protects \bigcup, \bigcap etc., which mathtext does support.
+for _size in ("big", "Big", "bigg", "Bigg"):
+    for _side in ("", "l", "r", "m"):
+        _MATHTEXT_ALIASES[f"\\{_size}{_side}"] = ""
 # (?![a-zA-Z]) keeps \le from eating the prefix of \left, \leq, etc.
 _ALIAS_RE = re.compile(
     "(?:"
